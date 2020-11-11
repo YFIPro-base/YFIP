@@ -1,66 +1,77 @@
+/**
+ *Submitted for verification at Etherscan.io on 2020-10-29
+*/
 
+pragma solidity ^0.4.21;
 
-pragma solidity ^0.5.2;
-contract ERC20Interface {
-  string public name;
-  string public symbol;
-  uint8 public decimals;
-  uint public totalSupply;
-
-  function transfer(address _to, uint256 _value) public returns (bool success);
-  function transferFrom(address _from, address _to, uint256 _value) public returns (bool success);
-  function approve(address _spender, uint256 _value) public returns (bool success);
-  function allowance(address _owner, address _spender) public view returns (uint256 remaining);
-
-  event Transfer(address indexed _from, address indexed _to, uint256 _value);
-  event Approval(address indexed _owner, address indexed _spender, uint256 _value);
+contract EIP20Interface {
+    
+    uint256 public totalSupply;
+    function balanceOf(address _owner) public view returns (uint256 balance);
+    function transfer(address _to, uint256 _value) public returns (bool success);
+    function transferFrom(address _from, address _to, uint256 _value) public returns (bool success);
+    function approve(address _spender, uint256 _value) public returns (bool success);
+    
+    function allowance(address _owner, address _spender) public view returns (uint256 remaining);
+    event Transfer(address indexed _from, address indexed _to, uint256 _value);
+    event Approval(address indexed _owner, address indexed _spender, uint256 _value);
 }
 
-contract YFIN_contract is ERC20Interface {
-  mapping (address => uint256) public balanceOf;
-  mapping (address => mapping (address => uint256) ) internal allowed;
 
-  constructor() public {
-    name = "yfi.pro";
-    symbol = "YFIP";
-    decimals = 18;
-    // 
-     totalSupply = 150000* (10 ** 18);
-    balanceOf[msg.sender] = totalSupply;
-  }
+contract YFIP is EIP20Interface {
 
-  function transfer(address _to, uint256 _value) public returns (bool success){
-    require(_to != address(0));
-    require(balanceOf[msg.sender] >= _value);
-    require(balanceOf[_to] + _value >= balanceOf[_to]);
+    uint256 constant private MAX_UINT256 = 2**256 - 1;
+    mapping (address => uint256) public balances;
+    mapping (address => mapping (address => uint256)) public allowed;
+    
+    string public name; 
+    uint8 public decimals;  
+    string public symbol;   
 
-    balanceOf[msg.sender] -= _value;
-    balanceOf[_to] += _value;
-    emit Transfer(msg.sender, _to, _value);
-    success = true;
-  }
+    constructor (
+        uint256 _initialAmount,
+        string _tokenName,
+        uint8 _decimalUnits,
+        string _tokenSymbol
+    ) public {
+        balances[msg.sender] = _initialAmount * 1e18;        
+        totalSupply = _initialAmount * 1e18;                 
+        name = _tokenName;                                   
+        decimals = _decimalUnits;                            
+        symbol = _tokenSymbol;                               
+    }
 
-  function transferFrom(address _from, address _to, uint256 _value) public returns (bool success){
-    require(_to != address(0));
-    require(balanceOf[_from] >= _value);
-    require(allowed[_from][msg.sender]  >= _value);
-    require(balanceOf[_to] + _value >= balanceOf[_to]);
+    function transfer(address _to, uint256 _value) public returns (bool success) {
+        require(balances[msg.sender] >= _value);
+        balances[msg.sender] -= _value;
+        balances[_to] += _value;
+        emit Transfer(msg.sender, _to, _value); //solhint-disable-line indent, no-unused-vars
+        return true;
+    }
 
-    balanceOf[_from] -= _value;
-    balanceOf[_to] += _value;
-    allowed[_from][msg.sender] -= _value;
-    emit Transfer(_from, _to, _value);
-    success = true;
-  }
+    function transferFrom(address _from, address _to, uint256 _value) public returns (bool success) {
+        uint256 allowance = allowed[_from][msg.sender];
+        require(balances[_from] >= _value && allowance >= _value);
+        balances[_to] += _value;
+        balances[_from] -= _value;
+        if (allowance < MAX_UINT256) {
+            allowed[_from][msg.sender] -= _value;
+        }
+        emit Transfer(_from, _to, _value); 
+        return true;
+    }
 
-  function approve(address _spender, uint256 _value) public returns (bool success){
-      require((_value == 0)||(allowed[msg.sender][_spender] == 0));
-      allowed[msg.sender][_spender] = _value;
-      emit Approval(msg.sender, _spender, _value);
-      success = true;
-  }
+    function balanceOf(address _owner) public view returns (uint256 balance) {
+        return balances[_owner];
+    }
 
-  function allowance(address _owner, address _spender) public view returns (uint256 remaining){
-    return allowed[_owner][_spender];
-  }
+    function approve(address _spender, uint256 _value) public returns (bool success) {
+        allowed[msg.sender][_spender] = _value;
+        emit Approval(msg.sender, _spender, _value); //solhint-disable-line indent, no-unused-vars
+        return true;
+    }
+
+    function allowance(address _owner, address _spender) public view returns (uint256 remaining) {
+        return allowed[_owner][_spender];
+    }
 }
